@@ -15,13 +15,10 @@ echo "###############################################"
 
 sleep 5
 
+touch logs/tweet.log
+
 if jps | grep -q ".*Kafka";
 then
-    echo "###############################################"
-    echo "Writing tweets to log..."
-    echo "###############################################"
-    python MakeTweets/generate.py&
-
     echo "###############################################"
     echo "Starting Flume..."
     echo "###############################################"
