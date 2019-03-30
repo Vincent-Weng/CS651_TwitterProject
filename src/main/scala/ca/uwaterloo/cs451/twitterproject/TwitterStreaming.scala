@@ -66,10 +66,17 @@ object TwitterStreaming {
         .replaceAll("""\s+""",""" """).toLowerCase.split(" "))
 
 
-    /***************************************biagram count***********************************/
+
+    /***************************************biagram count ***********************************/
     content.flatMap(words => {
       if (words.length > 1) {
-        words.sliding(2).map(p => (p(0), p(1))).toList ++ (for (word <- words.take(words.length - 1)) yield (word, "*"))
+        words.sliding(2).flatMap(p => {
+          if (p(0).matches("""\w*[a-zA-Z]\w*""") && p(1).matches("""\w*[a-zA-Z]\w*"""))
+            List((p(0), p(1)))
+          else
+            List()
+        }).toList ++
+          (for (word <- words.take(words.length - 1) if word.matches("""\w*[a-zA-Z]\w*""")) yield (word, "*"))
       }
       else
         List()
@@ -102,3 +109,4 @@ object TwitterStreaming {
 }
 
 
+/** *************************************Sharp increase words ***********************************/
