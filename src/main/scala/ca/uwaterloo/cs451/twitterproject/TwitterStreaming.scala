@@ -62,15 +62,9 @@ object TwitterStreaming {
         val Array(time, user, content) = tokens
         Array(time, user, content)
       })
-      .map(array => array(2).replaceAll("""[\p{Punct}]""", "").toLowerCase.split(" "))
+      .map(array => array(2).replaceAll("""[\p{Punct}]""", "")
+        .replaceAll("""\s+""",""" """).toLowerCase.split(" "))
 
-
-    /***************************************word count***********************************/
-//    content.flatMap(words => {
-//      words.map(word => (word, 1))
-//    }).reduceByKey(_ + _)
-//      .transform(rdd => rdd.sortBy(_._2))
-//      .saveAsTextFiles("output_content/output")
 
     /***************************************biagram count***********************************/
     content.flatMap(words => {
@@ -82,6 +76,7 @@ object TwitterStreaming {
     })
       .map(bigram => (bigram, 1))
       .reduceByKey(_ + _)
+      .transform(rdd => rdd.repartitionAndSortWithinPartitions(new MyPartitioner(5)))
       .map(bigram => {
         bigram._1 match {
           // (word, "*") case should come out first
@@ -95,7 +90,6 @@ object TwitterStreaming {
           }
         }
       })
-      .transform(rdd => rdd.sortBy(_._2))
       .map(resultEntry => {
         ("((" + resultEntry._1._1 + ", " + resultEntry._1._2 + ")") + " " + resultEntry._2 + ")"
       })
