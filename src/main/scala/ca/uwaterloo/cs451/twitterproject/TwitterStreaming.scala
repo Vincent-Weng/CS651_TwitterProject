@@ -3,6 +3,7 @@ package ca.uwaterloo.cs451.twitterproject
 import org.apache.spark.{Partitioner, SparkConf, SparkContext}
 import org.apache.spark.SparkConf
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.kafka010._
 import org.apache.spark.streaming.kafka010.LocationStrategies.PreferConsistent
 import org.apache.spark.streaming.kafka010.ConsumerStrategies.Subscribe
@@ -24,11 +25,57 @@ class MyPartitioner(n: Int) extends Partitioner {
 
 object TwitterStreaming {
 
+  /** *************************************biagram count ***********************************/
+  def biagram(content: DStream[Array[String]]): Unit = {
+    var marginal: Double = 0
+    content.flatMap(words => {
+      if (words.length > 1) {
+        words.sliding(2).flatMap(p => {
+          if (p(0).matches("""\w*[a-zA-Z]\w*""") && p(1).matches("""\w*[a-zA-Z]\w*"""))
+            List((p(0), p(1)))
+          else
+            List()
+        }).toList ++
+          (for (word <- words.take(words.length - 1) if word.matches("""\w*[a-zA-Z]\w*""")) yield (word, "*"))
+      }
+      else
+        List()
+    })
+      .map(biagram => (biagram, 1))
+      .reduceByKey(_ + _)
+      .transform(rdd => rdd.repartitionAndSortWithinPartitions(new MyPartitioner(5)))
+      .map(biagram => {
+        biagram._1 match {
+          // (word, "*") case should come out first
+          case (_: String, "*") => {
+            marginal = biagram._2
+            (biagram._1, biagram._2)
+          }
+          // (word, word) case uses the marginal of (word, "*") case
+          case (_: String, _: String) => {
+            (biagram._1, biagram._2 / marginal)
+          }
+        }
+      })
+      .map(resultEntry => {
+        ("((" + resultEntry._1._1 + ", " + resultEntry._1._2 + ")") + " " + resultEntry._2 + ")"
+      })
+      .repartition(1)
+      .saveAsTextFiles("output_biagram/output")
+  }
+
+  /** *************************************Sharp increase words *****************************/
+  def sharpIncrease(content: DStream[Array[String]]): Unit ={
+
+  }
+
+
+  /** *************************************main ********************************************/
   def main(args: Array[String]): Unit = {
 
 
     if (args.length != 2) {
-      println("Usage: TwitterStreaming <group> <topics> <numThreads>")
+      println("Usage: TwitterStreaming <group> <topics>")
       System.exit(1)
     }
 
@@ -36,7 +83,6 @@ object TwitterStreaming {
 
     val sparkConf = new SparkConf().setAppName("TwitterStreamingApp").setMaster("local[5]")
     val ssc = new StreamingContext(sparkConf, Seconds(10))
-    var marginal: Double = 0
 
     val topics = topicsAr.split(",")
 
@@ -66,47 +112,14 @@ object TwitterStreaming {
         .replaceAll("""\s+""",""" """).toLowerCase.split(" "))
 
 
+    /** *************************************biagram count ***********************************/
+    biagram(content)
 
-    /***************************************biagram count ***********************************/
-    content.flatMap(words => {
-      if (words.length > 1) {
-        words.sliding(2).flatMap(p => {
-          if (p(0).matches("""\w*[a-zA-Z]\w*""") && p(1).matches("""\w*[a-zA-Z]\w*"""))
-            List((p(0), p(1)))
-          else
-            List()
-        }).toList ++
-          (for (word <- words.take(words.length - 1) if word.matches("""\w*[a-zA-Z]\w*""")) yield (word, "*"))
-      }
-      else
-        List()
-    })
-      .map(bigram => (bigram, 1))
-      .reduceByKey(_ + _)
-      .transform(rdd => rdd.repartitionAndSortWithinPartitions(new MyPartitioner(5)))
-      .map(bigram => {
-        bigram._1 match {
-          // (word, "*") case should come out first
-          case (_: String, "*") => {
-            marginal = bigram._2
-            (bigram._1, bigram._2)
-          }
-          // (word, word) case uses the marginal of (word, "*") case
-          case (_: String, _: String) => {
-            (bigram._1, bigram._2 / marginal)
-          }
-        }
-      })
-      .map(resultEntry => {
-        ("((" + resultEntry._1._1 + ", " + resultEntry._1._2 + ")") + " " + resultEntry._2 + ")"
-      })
-      .repartition(1)
-      .saveAsTextFiles("output_bigram/output")
+
+    /** *************************************Sharp increase words *****************************/
+//    sharpIncrease(content)
 
     ssc.start()
     ssc.awaitTermination()
   }
 }
-
-
-/** *************************************Sharp increase words ***********************************/
