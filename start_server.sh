@@ -37,4 +37,4 @@ fi
 # kafka-console-producer.sh --broker-list localhost:9092 --topic hello_topic
 
 # Console consumer:
-# kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic hello_topic
+# kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic twitterStreaming
