@@ -28,13 +28,13 @@ else
 fi
 
 # Create topic
-# kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic hello_topic
+# kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic twitterStreaming
 
 # List topics
 # kafka-topics.sh --list --zookeeper localhost:2181
 
 # Console producer:
-# kafka-console-producer.sh --broker-list localhost:9092 --topic hello_topic
+# kafka-console-producer.sh --broker-list localhost:9092 --topic twitterStreaming
 
 # Console consumer:
 # kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic twitterStreaming
